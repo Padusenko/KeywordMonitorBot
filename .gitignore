@@ -1,0 +1,18 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Environment variables
+.env*
+!/.env.example
+
+# Session and database files
+*.session
+*.session-journal
+*.db
+*.db-journal
+
+# IDE settings
+.idea/
+.vscode/

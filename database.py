@@ -1,6 +1,10 @@
 import aiosqlite
+import os
 
-DB_NAME = 'bot_database.db'
+if os.getenv('APP_MODE') == 'production':
+    DB_NAME = '/data/bot_database.db'
+else:
+    DB_NAME = 'bot_database.db'
 
 
 async def create_tables():
