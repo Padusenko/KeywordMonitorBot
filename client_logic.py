@@ -12,15 +12,15 @@ from telethon.sessions import StringSession
 
 logging.getLogger('telethon').setLevel(logging.WARNING)
 
-session = None
+session_obj = None
 if TELETHON_SESSION:
-    # Якщо змінна оточення існує, створюємо об'єкт StringSession
-    session = StringSession(TELETHON_SESSION)
+    # На сервері: створюємо об'єкт StringSession з нашого рядка
+    session_obj = StringSession(TELETHON_SESSION)
 else:
-    # Якщо ми працюємо локально, використовуємо назву файлу
-    session = 'keyword_monitor_session'
+    # Локально: використовуємо назву файлу
+    session_obj = 'keyword_monitor_session'
 
-client = TelegramClient(session, API_ID, API_HASH)
+client = TelegramClient(session=session_obj, api_id=API_ID, api_hash=API_HASH)
 
 # Глобальний кеш для зберігання підписок: { 'url1': [(user_id, keyword), ...], 'url2': ... }
 channel_subscriptions = {}
