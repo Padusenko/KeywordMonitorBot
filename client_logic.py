@@ -123,4 +123,4 @@ async def start_client(notif_queue: asyncio.Queue, upd_queue: asyncio.Queue):
             pass
             
     print("Telethon client is running and listening for messages...")
-    await client.run_until_disconnected()
+    #  await client.run_until_disconnected()
