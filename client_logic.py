@@ -13,14 +13,21 @@ from telethon.sessions import StringSession
 logging.getLogger('telethon').setLevel(logging.WARNING)
 
 session_obj = None
+print("--- Client Logic Diagnosis ---")
 if TELETHON_SESSION:
-    # На сервері: створюємо об'єкт StringSession з нашого рядка
+    print("TELETHON_SESSION variable found. Creating StringSession object.")
     session_obj = StringSession(TELETHON_SESSION)
 else:
-    # Локально: використовуємо назву файлу
+    print("TELETHON_SESSION variable NOT found. Using file session 'keyword_monitor_session'.")
     session_obj = 'keyword_monitor_session'
 
+# Перевіряємо, що ми передаємо в клієнт
+print(f"Type of session object being passed to TelegramClient: {type(session_obj)}")
+
+# Передаємо `session` як іменований аргумент.
 client = TelegramClient(session=session_obj, api_id=API_ID, api_hash=API_HASH)
+print("TelegramClient initialized.")
+print("--- End Client Logic Diagnosis ---")
 
 # Глобальний кеш для зберігання підписок: { 'url1': [(user_id, keyword), ...], 'url2': ... }
 channel_subscriptions = {}
