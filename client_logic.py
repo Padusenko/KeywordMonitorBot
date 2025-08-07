@@ -7,13 +7,11 @@ from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.types import Channel
 from config import API_ID, API_HASH
 from database import get_all_unique_channels, get_subscriptions_for_channel
+from config import API_ID, API_HASH, TELETHON_SESSION
 
 logging.getLogger('telethon').setLevel(logging.WARNING)
 
-if os.getenv('APP_MODE') == 'production':
-    SESSION_NAME = '/data/keyword_monitor_session'
-else:
-    SESSION_NAME = 'keyword_monitor_session'
+SESSION_NAME = TELETHON_SESSION if TELETHON_SESSION else 'keyword_monitor_session'
 
 client = TelegramClient(SESSION_NAME, API_ID, API_HASH)
 
