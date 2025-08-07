@@ -1,32 +1,32 @@
+# main.py (ФІНАЛЬНА ВЕРСІЯ З ВИДАЛЕННЯМ WEBHOOK)
+
 import asyncio
 import logging
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.exceptions import TelegramAPIError
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import BOT_TOKEN
 from database import create_tables
 from handlers import common, channel_management, keyword_management
 from client_logic import client, start_client
 from middlewares.data_provider import DataProviderMiddleware
 
-# Створюємо чергу для сповіщень
 notification_queue = asyncio.Queue()
 update_queue = asyncio.Queue()
 
-
 async def notification_worker(bot: Bot):
-    """Воркер, що обробляє чергу сповіщень. (Виправлена версія)"""
+    """Воркер, що обробляє чергу сповіщень."""
     while True:
         try:
             notification = await notification_queue.get()
             
             user_id = notification.get('user_id')
             message_text = notification.get('text')
-            link = notification.get('link') 
+            link = notification.get('link')
 
             keyboard = None
             if link:
-                from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
                 keyboard = InlineKeyboardMarkup(inline_keyboard=[
                     [InlineKeyboardButton(text="Перейти до повідомлення ↗️", url=link)]
                 ])
@@ -39,44 +39,56 @@ async def notification_worker(bot: Bot):
             logging.info("Notification worker has been cancelled.")
             break
         except TelegramAPIError as e:
+            user_id = notification.get('user_id', 'unknown')
             logging.error(f"Failed to send message to {user_id}: {e}")
         except Exception as e:
             logging.error(f"Error in notification worker: {e}")
 
 
 async def main():
-    await create_tables()
-
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s")
+
+    await create_tables()
 
     bot = Bot(token=BOT_TOKEN)
     storage = MemoryStorage()
     dp = Dispatcher(storage=storage)
+
     dp.update.middleware(DataProviderMiddleware(update_queue=update_queue))
 
     dp.include_router(common.router)
     dp.include_router(channel_management.router)
     dp.include_router(keyword_management.router)
 
+    # Створюємо фонові завдання
     worker_task = asyncio.create_task(notification_worker(bot))
-    
+    client_task = asyncio.create_task(start_client(notification_queue, update_queue))
+
     try:
-        print("Bot is running...")
-        await asyncio.gather(
-            dp.start_polling(bot),
-            start_client(notification_queue, update_queue)
-        )
+        # Перед запуском полінгу, видаляємо вебхук, щоб гарантовано отримувати оновлення
+        await bot.delete_webhook(drop_pending_updates=True)
+        
+        print("Starting polling...")
+        await dp.start_polling(bot)
+
     finally:
+        print("Stopping services...")
+        client_task.cancel()
         worker_task.cancel()
+        
+        # Чекаємо коректного завершення фонових завдань
+        await asyncio.gather(client_task, worker_task, return_exceptions=True)
+        
         if client.is_connected():
             await client.disconnect()
             print("Telethon client disconnected.")
+            
         await bot.session.close()
-        print("\nBot stopped")
+        print("All services stopped.")
 
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
-        pass
+        logging.info("Bot stopped by user.")
