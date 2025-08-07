@@ -8,12 +8,19 @@ from telethon.tl.types import Channel
 from config import API_ID, API_HASH
 from database import get_all_unique_channels, get_subscriptions_for_channel
 from config import API_ID, API_HASH, TELETHON_SESSION
+from telethon.sessions import StringSession
 
 logging.getLogger('telethon').setLevel(logging.WARNING)
 
-SESSION_NAME = TELETHON_SESSION if TELETHON_SESSION else 'keyword_monitor_session'
+session = None
+if TELETHON_SESSION:
+    # Якщо змінна оточення існує, створюємо об'єкт StringSession
+    session = StringSession(TELETHON_SESSION)
+else:
+    # Якщо ми працюємо локально, використовуємо назву файлу
+    session = 'keyword_monitor_session'
 
-client = TelegramClient(SESSION_NAME, API_ID, API_HASH)
+client = TelegramClient(session, API_ID, API_HASH)
 
 # Глобальний кеш для зберігання підписок: { 'url1': [(user_id, keyword), ...], 'url2': ... }
 channel_subscriptions = {}
