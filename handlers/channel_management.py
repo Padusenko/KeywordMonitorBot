@@ -1,6 +1,5 @@
-# handlers/channel_management.py
-
 import asyncio
+import re
 from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
@@ -42,26 +41,35 @@ async def start_add_channel_callback(callback: CallbackQuery, state: FSMContext)
 # Цей обробник спрацьовує, коли користувач надсилає URL, перебуваючи у стані AddChannel.waiting_for_url
 @router.message(AddChannel.waiting_for_url)
 async def process_channel_url(message: Message, state: FSMContext, update_queue: asyncio.Queue):
-    # Виходимо зі стану, щоб уникнути подальших спрацювань
+    channel_url = message.text.strip() # Одразу прибираємо зайві пробіли
+
+    # Регулярний вираз для перевірки посилань t.me/ або @username
+    pattern = r'(?:https?:\/\/)?(?:t(?:elegram)?\.me\/|@)([a-zA-Z0-9_]{5,32})'
+    match = re.match(pattern, channel_url)
+
+    if not match:
+        # Якщо текст не відповідає патерну, просимо ввести ще раз
+        await message.answer("❌ **Помилка.** Це не схоже на правильне посилання на Telegram-канал. \nБудь ласка, надішліть посилання у форматі `https://t.me/channel_name` або `@channel_name`.")
+        # Важливо: ми не виходимо зі стану, даючи користувачеві ще одну спробу
+        return
+
+    # Якщо валідація пройшла, виходимо зі стану
     await state.clear()
     
-    channel_url = message.text
+    # Форматуємо посилання до єдиного вигляду
+    clean_username = match.group(1)
+    formatted_url = f"https://t.me/{clean_username}"
+
     user_id = message.from_user.id
-
-    # Додаємо http-префікс, якщо його немає
-    if not channel_url.startswith(('http://', 'https://')):
-        channel_url = f"https://t.me/{channel_url.replace('@', '')}"
-
-    is_added = await add_channel_for_user(user_id, channel_url)
+    is_added = await add_channel_for_user(user_id, formatted_url)
 
     if is_added:
-        await message.answer(f"✅ Чудово! Канал <b>{channel_url}</b> успішно додано.", parse_mode="HTML")
-        # Надсилаємо сигнал в Telethon про оновлення
-        update_queue.put_nowait({'action': 'add_channel', 'url': channel_url})
+        await message.answer(f"✅ Чудово! Канал <b>{formatted_url}</b> успішно додано.", parse_mode="HTML")
+        update_queue.put_nowait({'action': 'add_channel', 'url': formatted_url})
     else:
-        await message.answer(f"⚠️ Цей канал вже є у вашому списку.")
+        await message.answer(f"⚠️ Канал <b>{formatted_url}</b> вже є у вашому списку.", parse_mode="HTML")
         
-    # Повертаємо користувача до списку каналів
+    # Повертаємо користувача до оновленого списку каналів
     await show_channels(message)
 
 

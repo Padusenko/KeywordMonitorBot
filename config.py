@@ -17,6 +17,7 @@ API_ID = int(api_id_str) if api_id_str else None
 
 API_HASH = os.getenv('API_HASH')
 TELETHON_SESSION = os.getenv('TELETHON_SESSION')
+DATABASE_URL = os.getenv('DATABASE_URL')
 
 if not all([BOT_TOKEN, API_ID, API_HASH]):
     raise ValueError("One or more environment variables are not set. Check your .env file.")

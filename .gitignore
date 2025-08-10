@@ -8,9 +8,9 @@ __pycache__/
 !/.env.example
 
 # Session and database files
-*.session
+#*.session
 *.session-journal
-*.db
+#*.db
 *.db-journal
 
 # IDE settings

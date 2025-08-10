@@ -5,7 +5,6 @@ from telethon.sync import TelegramClient
 from telethon import events
 from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.types import Channel
-from config import API_ID, API_HASH
 from database import get_all_unique_channels, get_subscriptions_for_channel
 from config import API_ID, API_HASH, TELETHON_SESSION
 from telethon.sessions import StringSession
@@ -13,21 +12,15 @@ from telethon.sessions import StringSession
 logging.getLogger('telethon').setLevel(logging.WARNING)
 
 session_obj = None
-print("--- Client Logic Diagnosis ---")
 if TELETHON_SESSION:
-    print("TELETHON_SESSION variable found. Creating StringSession object.")
+    # На сервері: створюємо об'єкт StringSession
     session_obj = StringSession(TELETHON_SESSION)
 else:
-    print("TELETHON_SESSION variable NOT found. Using file session 'keyword_monitor_session'.")
+    # Локально: використовуємо назву файлу
     session_obj = 'keyword_monitor_session'
 
-# Перевіряємо, що ми передаємо в клієнт
-print(f"Type of session object being passed to TelegramClient: {type(session_obj)}")
-
-# Передаємо `session` як іменований аргумент.
+# Передаємо `session` як іменований аргумент
 client = TelegramClient(session=session_obj, api_id=API_ID, api_hash=API_HASH)
-print("TelegramClient initialized.")
-print("--- End Client Logic Diagnosis ---")
 
 # Глобальний кеш для зберігання підписок: { 'url1': [(user_id, keyword), ...], 'url2': ... }
 channel_subscriptions = {}
