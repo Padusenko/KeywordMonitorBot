@@ -1,5 +1,7 @@
 import asyncpg
 from config import DATABASE_URL
+from datetime import date
+
 
 # Пул з'єднань для ефективної роботи
 pool = None
@@ -48,7 +50,7 @@ async def add_user(user_id: int):
     pool = await get_pool()
     await pool.execute(
         "INSERT INTO users (user_id, subscription_end_date) VALUES ($1, $2) ON CONFLICT (user_id) DO NOTHING",
-        user_id, '9999-12-31'
+        user_id, date(9999, 12, 31)
     )
 
 async def add_channel_for_user(user_id: int, channel_url: str) -> bool:
