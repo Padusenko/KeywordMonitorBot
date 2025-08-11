@@ -8,6 +8,7 @@ from aiogram.types import Message, CallbackQuery
 from states.keyword import AddKeyword
 from database import add_keyword_for_user, get_user_keywords, delete_keyword_by_id
 from keyboards.inline import get_list_keyboard, DeleteCallback
+from keyboards.reply import cancel_menu
 
 router = Router()
 
@@ -30,7 +31,10 @@ async def show_keywords(message: Message):
 # Обробник для кнопки "Додати нове слово"
 @router.callback_query(F.data == "add_keyword")
 async def start_add_keyword_callback(callback: CallbackQuery, state: FSMContext):
-    await callback.message.edit_text("Надішліть ключове слово або фразу, яку будемо шукати.")
+    await callback.message.answer(
+        "Надішліть ключове слово або фразу, яку будемо шукати.",
+        reply_markup=cancel_menu
+    )
     await state.set_state(AddKeyword.waiting_for_keyword)
     await callback.answer()
 
@@ -51,7 +55,10 @@ async def process_keyword(message: Message, state: FSMContext, update_queue: asy
     else:
         await message.answer(f"⚠️ Слово '<b>{keyword}</b>' вже є у вашому списку.", parse_mode="HTML")
     
-    # Повертаємо користувача до списку слів
+    # Повідомляємо, що все гаразд
+    await message.answer("Ви повернулися в головне меню.", reply_markup=main_menu)
+    
+    # Показуємо оновлений список слів
     await show_keywords(message)
 
 

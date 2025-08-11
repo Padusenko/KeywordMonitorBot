@@ -1,8 +1,10 @@
 from aiogram import Router, F
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, Command, StateFilter
 from aiogram.types import Message
 from keyboards.reply import main_menu
 from database import add_user
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import any_state
 
 router = Router()
 
@@ -32,3 +34,17 @@ async def cmd_about(message: Message):
         "Ви можете додавати декілька каналів та багато ключових слів."
     )
     await message.answer(about_text, parse_mode="HTML")
+
+
+@router.message(StateFilter(any_state), F.text == "⬅️ Скасувати")
+@router.message(StateFilter(any_state), Command("cancel"))
+async def cancel_handler(message: Message, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state is None:
+        return
+
+    await state.clear()
+    await message.answer(
+        "Дію скасовано. Ви повернулися в головне меню.",
+        reply_markup=main_menu # Повертаємо головну клавіатуру
+    )

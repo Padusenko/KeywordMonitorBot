@@ -14,3 +14,12 @@ main_menu = ReplyKeyboardMarkup(
     input_field_placeholder="Оберіть дію з меню...",
     one_time_keyboard=False
 )
+
+cancel_menu = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text="⬅️ Скасувати")
+        ]
+    ],
+    resize_keyboard=True
+)

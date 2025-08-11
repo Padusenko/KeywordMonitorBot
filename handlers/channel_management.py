@@ -3,7 +3,7 @@ import re
 from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
-
+from keyboards.reply import cancel_menu
 from states.channel import AddChannel
 from database import add_channel_for_user, get_user_channels, delete_channel_by_id
 from keyboards.inline import get_list_keyboard, DeleteCallback
@@ -30,11 +30,11 @@ async def show_channels(message: Message):
 @router.callback_query(F.data == "add_channel")
 async def start_add_channel_callback(callback: CallbackQuery, state: FSMContext):
     # Використовуємо edit_text, щоб змінити поточне повідомлення
-    await callback.message.edit_text(
+    await callback.message.answer(
         "Будь ласка, надішліть посилання на Telegram-канал.\n"
-        "Наприклад: https://t.me/telegram або @telegram"
+        "Наприклад: https://t.me/telegram або @telegram",
+        reply_markup=cancel_menu # <--- Показуємо кнопку "Скасувати"
     )
-    # Встановлюємо стан очікування URL
     await state.set_state(AddChannel.waiting_for_url)
     await callback.answer()
 
@@ -69,7 +69,10 @@ async def process_channel_url(message: Message, state: FSMContext, update_queue:
     else:
         await message.answer(f"⚠️ Канал <b>{formatted_url}</b> вже є у вашому списку.", parse_mode="HTML")
         
-    # Повертаємо користувача до оновленого списку каналів
+     # Повідомляємо, що все гаразд (це можна навіть прибрати, якщо хочете менше повідомлень)
+    await message.answer("Ви повернулися в головне меню.", reply_markup=main_menu)
+    
+    # Показуємо оновлений список каналів (вже без Reply-клавіатури)
     await show_channels(message)
 
 

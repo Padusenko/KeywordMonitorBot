@@ -1,16 +1,12 @@
-# main.py (ФІНАЛЬНА, НАЙНАДІЙНІША ВЕРСІЯ)
-
 import asyncio
 import logging
-
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.exceptions import TelegramAPIError
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-
 from config import BOT_TOKEN
 from database import create_tables
-from handlers import common, channel_management, keyword_management
+from handlers import common, channel_management, keyword_management, unknown_commands
 from client_logic import client, start_client
 from middlewares.data_provider import DataProviderMiddleware
 
@@ -66,6 +62,7 @@ async def main():
     dp.include_router(common.router)
     dp.include_router(channel_management.router)
     dp.include_router(keyword_management.router)
+    dp.include_router(unknown_commands.router)
 
     # Створюємо фонові завдання
     worker_task = asyncio.create_task(notification_worker(bot))
