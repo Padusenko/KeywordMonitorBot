@@ -3,7 +3,7 @@ import re
 from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
-from keyboards.reply import cancel_menu
+from keyboards.reply import main_menu, cancel_menu
 from states.channel import AddChannel
 from database import add_channel_for_user, get_user_channels, delete_channel_by_id
 from keyboards.inline import get_list_keyboard, DeleteCallback

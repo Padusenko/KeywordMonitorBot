@@ -8,7 +8,7 @@ from aiogram.types import Message, CallbackQuery
 from states.keyword import AddKeyword
 from database import add_keyword_for_user, get_user_keywords, delete_keyword_by_id
 from keyboards.inline import get_list_keyboard, DeleteCallback
-from keyboards.reply import cancel_menu
+from keyboards.reply import main_menu, cancel_menu
 
 router = Router()
 
