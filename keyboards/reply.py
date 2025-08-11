@@ -1,5 +1,8 @@
+# keyboards/reply.py
+
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
+# Головне меню, яке бачить користувач
 main_menu = ReplyKeyboardMarkup(
     keyboard=[
         [
@@ -11,10 +14,10 @@ main_menu = ReplyKeyboardMarkup(
         ]
     ],
     resize_keyboard=True,
-    input_field_placeholder="Оберіть дію з меню...",
-    one_time_keyboard=False
+    input_field_placeholder="Оберіть дію з меню..."
 )
 
+# Окрема клавіатура з однією кнопкою "Скасувати" для виходу зі станів
 cancel_menu = ReplyKeyboardMarkup(
     keyboard=[
         [
