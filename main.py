@@ -6,7 +6,9 @@ from aiogram.exceptions import TelegramAPIError
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import BOT_TOKEN
 from database import create_tables
-from handlers import common, channel_management, keyword_management, unknown_commands
+from handlers import common, unknown_commands
+from handlers.channel_handlers import channels_router
+from handlers.keyword_handlers import keywords_router
 from client_logic import client, start_client
 from middlewares.data_provider import DataProviderMiddleware
 
@@ -60,8 +62,8 @@ async def main():
 
     # Реєструємо роутери
     dp.include_router(common.router)
-    dp.include_router(channel_management.router)
-    dp.include_router(keyword_management.router)
+    dp.include_router(channels_router)
+    dp.include_router(keywords_router)
     dp.include_router(unknown_commands.router)
 
     # Створюємо фонові завдання
