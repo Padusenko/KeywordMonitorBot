@@ -1,6 +1,6 @@
 import re
 import asyncio
-from aiogram import Router, F, types
+from aiogram import Router, F, types, Bot
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
 from keyboards.inline import (
@@ -33,9 +33,9 @@ async def show_channel_list(message_or_callback: Message | CallbackQuery):
             await message_or_callback.message.answer(text, parse_mode="Markdown", reply_markup=keyboard)
 
 
-async def show_channel_menu(callback: CallbackQuery, channel_id: int):
+async def show_channel_menu(callback_or_message: CallbackQuery | Message, channel_id: int, bot: Bot):
     """Надсилає або оновлює меню керування конкретним каналом."""
-    user_id = callback.from_user.id
+    user_id = callback_or_message.from_user.id
     # Отримуємо як прив'язані, так і всі глобальні слова користувача
     linked_keywords = await get_keywords_for_channel(channel_id)
     all_user_keywords = await get_user_keywords(user_id)
@@ -55,11 +55,11 @@ async def show_channel_menu(callback: CallbackQuery, channel_id: int):
     text = f"⚙️ **Керування каналом:**\n`{channel_url}`\n\n📄-локальне, 🌐-глобальне"
     keyboard = channel_config_keyboard(channel_id, all_visible_keywords)
     
-    try:
-        await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=keyboard)
-    except Exception:
-        await callback.message.answer(text, parse_mode="Markdown", reply_markup=keyboard)
-    await callback.answer()
+    if isinstance(callback_or_message, CallbackQuery):
+        await callback_or_message.message.edit_text(text, parse_mode="Markdown", reply_markup=keyboard)
+        await callback_or_message.answer()
+    else: # Якщо це Message
+        await bot.send_message(callback_or_message.chat.id, text, parse_mode="Markdown", reply_markup=keyboard)
 
 
 # --- ОБРОБНИКИ НАВІГАЦІЇ ---
@@ -90,12 +90,12 @@ async def navigate_channels_menu(callback: CallbackQuery, callback_data: MenuCal
 
 # Обробник кнопок у меню конкретного каналу
 @channels_router.callback_query(MenuCallback.filter(F.level == 'channel_config'))
-async def navigate_channel_submenu(callback: CallbackQuery, callback_data: MenuCallback, state: FSMContext):
+async def navigate_channel_submenu(callback: CallbackQuery, callback_data: MenuCallback, state: FSMContext, bot: Bot):
     action = callback_data.action
     channel_id = callback_data.item_id
     
     if action == 'view':
-        await show_channel_menu(callback, channel_id)
+        await show_channel_menu(callback, channel_id, bot)
     elif action == 'add_kw':
         await state.update_data(current_channel_id=channel_id)
         await callback.message.answer("Надішліть нове **локальне** слово для цього каналу:", reply_markup=cancel_menu)
@@ -144,7 +144,7 @@ async def process_new_global_keyword(message: Message, state: FSMContext, update
     await show_channel_list(message)
 
 @channels_router.message(AddForm.new_keyword_for_channel)
-async def process_new_local_keyword(message: Message, state: FSMContext, update_queue: asyncio.Queue):
+async def process_new_local_keyword(message: Message, state: FSMContext, update_queue: asyncio.Queue, bot: Bot): # <--- Додали bot
     data = await state.get_data()
     channel_id = data.get('current_channel_id')
     await state.clear()
@@ -162,8 +162,7 @@ async def process_new_local_keyword(message: Message, state: FSMContext, update_
         update_queue.put_nowait({'action': 'update_subscriptions'})
     
     # Повертаємо користувача в меню каналу
-    fake_callback = types.CallbackQuery(id='fake', from_user=message.from_user, chat_instance='fake', message=message)
-    await show_channel_menu(fake_callback, channel_id)
+    await show_channel_menu(message, channel_id, bot)
 
 
 # --- ОБРОБНИКИ ДРІБНИХ КОЛБЕКІВ ---
@@ -200,7 +199,7 @@ async def toggle_keyword_link(callback: CallbackQuery, callback_data: ToggleLink
 
 
 @channels_router.callback_query(UnlinkCallback.filter())
-async def unlink_keyword(callback: CallbackQuery, callback_data: UnlinkCallback, update_queue: asyncio.Queue):
+async def unlink_keyword(callback: CallbackQuery, callback_data: UnlinkCallback, update_queue: asyncio.Queue, bot: Bot):
     # Тепер ми отримуємо дані безпечно, як об'єкт
     channel_id = callback_data.channel_id
     keyword_id = callback_data.keyword_id
@@ -211,7 +210,7 @@ async def unlink_keyword(callback: CallbackQuery, callback_data: UnlinkCallback,
     await callback.answer("Прив'язку слова видалено", show_alert=False)
     
     # Оновлюємо меню каналу, щоб показати зміни
-    await show_channel_menu(callback, channel_id)
+    await show_channel_menu(callback, channel_id, bot)
     
     # Надсилаємо сигнал в Telethon про необхідність оновити кеш
     update_queue.put_nowait({'action': 'update_subscriptions'})

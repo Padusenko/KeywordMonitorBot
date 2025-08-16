@@ -58,7 +58,7 @@ async def main():
     dp = Dispatcher(storage=storage)
 
     # Реєструємо middleware
-    dp.update.middleware(DataProviderMiddleware(update_queue=update_queue))
+    dp.update.middleware(DataProviderMiddleware(update_queue=update_queue, bot=bot))
 
     # Реєструємо роутери
     dp.include_router(common.router)

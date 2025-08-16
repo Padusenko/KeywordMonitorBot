@@ -1,11 +1,13 @@
 from typing import Callable, Dict, Any, Awaitable
-from aiogram import BaseMiddleware
+from aiogram import BaseMiddleware, Bot
 from aiogram.types import TelegramObject
 import asyncio
 
 class DataProviderMiddleware(BaseMiddleware):
-    def __init__(self, update_queue: asyncio.Queue):
+    # приймаємо і чергу, і бота
+    def __init__(self, update_queue: asyncio.Queue, bot: Bot):
         self.update_queue = update_queue
+        self.bot = bot
 
     async def __call__(
         self,
@@ -13,7 +15,7 @@ class DataProviderMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: Dict[str, Any]
     ) -> Any:
-        # Додаємо нашу чергу в словник `data`,
-        # який потім буде доступний в обробниках
+        # Додаємо обидва об'єкти в дані, доступні для обробників
         data['update_queue'] = self.update_queue
+        data['bot'] = self.bot
         return await handler(event, data)
