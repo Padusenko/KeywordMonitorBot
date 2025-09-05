@@ -6,6 +6,7 @@ from states.forms import AddForm
 from database import get_user_keywords, add_keyword_for_user, delete_keyword
 from keyboards.inline import keywords_main_keyboard, MenuCallback
 from keyboards.reply import main_menu, cancel_menu
+from aiogram.filters import StateFilter
 
 keywords_router = Router()
 
@@ -21,15 +22,20 @@ async def show_keyword_list(message_or_callback: Message | CallbackQuery):
     
     if isinstance(message_or_callback, Message):
         await message_or_callback.answer(text, parse_mode="Markdown", reply_markup=keyboard)
-    else: # Якщо це CallbackQuery
+    else:
         try:
             await message_or_callback.message.edit_text(text, parse_mode="Markdown", reply_markup=keyboard)
         except Exception:
             await message_or_callback.message.answer(text, parse_mode="Markdown", reply_markup=keyboard)
 
 
-@keywords_router.message(F.text == "📝 Мої ключові слова")
-async def keywords_menu_command(message: Message):
+@keywords_router.message(F.text == "📝 Мої ключові слова", StateFilter(None))
+async def keywords_menu_command(message: Message, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state:
+        await state.clear()
+        await message.answer("Попередня дія була скасована.", reply_markup=main_menu)
+
     await show_keyword_list(message)
 
 

@@ -2,7 +2,7 @@ import re
 import asyncio
 from aiogram import Router, F, types, Bot
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
+from aiogram.types import Message, CallbackQuery
 from keyboards.inline import (
     channels_main_keyboard, channel_config_keyboard, link_keywords_keyboard, 
     MenuCallback, UnlinkCallback, ToggleLinkCallback
@@ -11,10 +11,11 @@ from states.forms import AddForm
 from database import *
 from keyboards.inline import *
 from keyboards.reply import main_menu, cancel_menu
+from aiogram.filters import StateFilter
 
 channels_router = Router()
 
-# --- ДОПОМІЖНІ ФУНКЦІЇ ДЛЯ ОНОВЛЕННЯ МЕНЮ ---
+# ДОПОМІЖНІ ФУНКЦІЇ ДЛЯ ОНОВЛЕННЯ МЕНЮ
 
 async def show_channel_list(message_or_callback: Message | CallbackQuery):
     """Надсилає або оновлює повідомлення зі списком каналів."""
@@ -25,11 +26,10 @@ async def show_channel_list(message_or_callback: Message | CallbackQuery):
     
     if isinstance(message_or_callback, Message):
         await message_or_callback.answer(text, parse_mode="Markdown", reply_markup=keyboard)
-    else: # Якщо це CallbackQuery
+    else:
         try:
             await message_or_callback.message.edit_text(text, parse_mode="Markdown", reply_markup=keyboard)
         except Exception:
-            # Якщо повідомлення неможливо змінити, надсилаємо нове
             await message_or_callback.message.answer(text, parse_mode="Markdown", reply_markup=keyboard)
 
 
@@ -58,14 +58,19 @@ async def show_channel_menu(callback_or_message: CallbackQuery | Message, channe
     if isinstance(callback_or_message, CallbackQuery):
         await callback_or_message.message.edit_text(text, parse_mode="Markdown", reply_markup=keyboard)
         await callback_or_message.answer()
-    else: # Якщо це Message
+    else:
         await bot.send_message(callback_or_message.chat.id, text, parse_mode="Markdown", reply_markup=keyboard)
 
 
-# --- ОБРОБНИКИ НАВІГАЦІЇ ---
+# ОБРОБНИКИ НАВІГАЦІЇ
 
-@channels_router.message(F.text == "🗂️ Мої канали")
-async def channels_menu_command(message: Message):
+@channels_router.message(F.text == "🗂️ Мої канали", StateFilter(None))
+async def channels_menu_command(message: Message, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state:
+        await state.clear()
+        await message.answer("Попередня дія була скасована.", reply_markup=main_menu)
+    
     await show_channel_list(message)
 
 # Обробник кнопок у головному меню каналів
@@ -114,25 +119,28 @@ async def navigate_channel_submenu(callback: CallbackQuery, callback_data: MenuC
         await callback.answer()
 
 
-# --- ОБРОБНИКИ СТАНІВ (FSM) ---
+# ОБРОБНИКИ СТАНІВ (FSM)
+
+MENU_BUTTONS = ["🗂️ Мої канали", "📝 Мої ключові слова", "ℹ️ Про бота"]
 
 @channels_router.message(AddForm.channel_url)
 async def process_new_channel(message: Message, state: FSMContext, update_queue: asyncio.Queue):
-    await state.clear()
     match = re.match(r'(?:https?:\/\/)?(?:t(?:elegram)?\.me\/|@)([a-zA-Z0-9_]{5,32})', message.text.strip())
-    
     if not match:
-        await message.answer("❌ **Помилка.** Неправильний формат посилання.", reply_markup=main_menu)
-        return
-        
+        await message.answer("❌ **Помилка.** Неправильний формат посилання. Спробуйте ще раз або скасуйте дію.")
+        return 
+
+    await state.clear()
+    
     formatted_url = f"https://t.me/{match.group(1)}"
     channel_id = await add_channel_for_user(message.from_user.id, formatted_url)
     
     if channel_id:
-        await message.answer(f"✅ Канал <b>{formatted_url}</b> успішно додано.", parse_mode="HTML", reply_markup=main_menu)
+        await message.answer(f"✅ Канал <b>{formatted_url}</b> додано.", parse_mode="HTML", reply_markup=main_menu)
         update_queue.put_nowait({'action': 'add_channel', 'url': formatted_url})
     else:
         await message.answer(f"⚠️ Канал <b>{formatted_url}</b> вже є у списку.", parse_mode="HTML", reply_markup=main_menu)
+        
     await show_channel_list(message)
 
 @channels_router.message(AddForm.global_keyword_name)
@@ -165,11 +173,10 @@ async def process_new_local_keyword(message: Message, state: FSMContext, update_
     await show_channel_menu(message, channel_id, bot)
 
 
-# --- ОБРОБНИКИ ДРІБНИХ КОЛБЕКІВ ---
+# ОБРОБНИКИ ДРІБНИХ КОЛБЕКІВ
 
 @channels_router.callback_query(ToggleLinkCallback.filter())
 async def toggle_keyword_link(callback: CallbackQuery, callback_data: ToggleLinkCallback, update_queue: asyncio.Queue):
-    # Отримуємо дані безпечно з об'єкта callback_data
     channel_id = callback_data.channel_id
     keyword_id = callback_data.keyword_id
     
@@ -192,7 +199,6 @@ async def toggle_keyword_link(callback: CallbackQuery, callback_data: ToggleLink
     try:
         await callback.message.edit_reply_markup(reply_markup=keyboard)
     except Exception:
-        # Може виникнути помилка, якщо клавіатура не змінилася. Просто ігноруємо.
         pass
     
     update_queue.put_nowait({'action': 'update_subscriptions'})
@@ -200,17 +206,13 @@ async def toggle_keyword_link(callback: CallbackQuery, callback_data: ToggleLink
 
 @channels_router.callback_query(UnlinkCallback.filter())
 async def unlink_keyword(callback: CallbackQuery, callback_data: UnlinkCallback, update_queue: asyncio.Queue, bot: Bot):
-    # Тепер ми отримуємо дані безпечно, як об'єкт
     channel_id = callback_data.channel_id
     keyword_id = callback_data.keyword_id
 
-    # Викликаємо функцію для видалення зв'язку з бази даних
     await unlink_keyword_from_channel_by_ids(channel_id, keyword_id)
 
     await callback.answer("Прив'язку слова видалено", show_alert=False)
     
-    # Оновлюємо меню каналу, щоб показати зміни
     await show_channel_menu(callback, channel_id, bot)
     
-    # Надсилаємо сигнал в Telethon про необхідність оновити кеш
     update_queue.put_nowait({'action': 'update_subscriptions'})
